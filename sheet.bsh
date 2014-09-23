@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+#Karl Chavarria
+#09-08-2011
+#script to auto-generate an info sheet for a new employee
+#
+echo -e "Enter full name:\n\n"
+read FULLNAME;
+echo -e "Enter password:\n\n"
+read PASSWORD;
+#
+FIRSTNAME=`echo $FULLNAME | cut -f1 -d' '`
+LASTNAME=`echo $FULLNAME | cut -f2 -d' '`
+USERNAME=`echo $FIRSTNAME|cut -c1-1;echo $LASTNAME`
+USERNAME=`echo $USERNAME| sed -e 's/ //' -e 's/\(.*\)/\L\1/'`
+EMAIL=`echo $USERNAME"@site.com"`
+
+#echo out all the information and formatting into a variable
+PREPRINT=`echo -e "$FIRSTNAME" "$LASTNAME"'\n\n''email url:	http://gmail.com\n''email login:	'"$EMAIL"'\n''email password: '"$PASSWORD"'\n\n''ldap directory password change url: http://ldap.site.com\n\n''ldap login:	'"$USERNAME"'\n''ldap password: (same as email password)\n\n''workstation temp password: password\n\n''general info wiki: http://wiki.site.com/wiki/indep.php/Main_Page\n'`
+echo "$PREPRINT"|txt2html > sheet.html
+
+#echo -e "$FIRSTNAME" "$LASTNAME"'\n'
+#echo -e 'email url:     http://gmail.com'
+#echo -e 'email login:   '"$EMAIL"
+#echo -e 'email password: '"$PASSWORD"'\n'
+#echo -e 'ldap directory password change url: http://ldap.site.com\n'
+#echo -e 'ldap login:    '"$USERNAME"
+#echo -e 'ldap password: (same as email password)\n'
+#echo -e 'workstation temp password: password\n'
+#echo -e 'general info wiki: http://wiki.site.com/wiki/indep.php/Main_Page\n'
+
+#echo "USERNAME" $USERNAME "EMAIL" $EMAIL "PASSWORD" $PASSWORD "FIRSTNAME" $FIRSTNAME "LASTNAME" $LASTNAME

@@ -1,0 +1,35 @@
+#!/bin/bash
+#
+#Karl Chavarria
+#08-01-2011
+#This script interactively takes a first name, last name and password 
+#and creates an ldap user with those properties and adds them to groups.
+#SSH key-auth is required.
+#
+echo -e "\nPlease enter full name\n";
+read FULLNAME;
+FIRSTNAME=`echo $FULLNAME | cut -f1 -d' '`
+LASTNAME=`echo $FULLNAME | cut -f2 -d' '`
+USERNAME=`echo $FIRSTNAME|cut -c1-1;echo $LASTNAME`
+USERNAME=`echo $USERNAME| sed -e 's/ //' -e 's/\(.*\)/\L\1/'`
+
+echo -e "\nPlease enter password\n";
+read PASSWORD;
+
+EMAIL=`echo "$USERNAME"@site.com`
+
+ssh root@jax "smbldap-useradd -a -Z shadowMax=99999,mail=$EMAIL -m $USERNAME" 
+ssh root@jax "echo -e '"$PASSWORD"' > /tmp/pass.txt; echo -e '"$PASSWORD"' >> /tmp/pass.txt"
+ssh root@jax "smbldap-passwd $USERNAME < /tmp/pass.txt"
+ssh root@jax "rm -rf /tmp/pass.txt"
+ssh root@jax "smbldap-usermod $USERNAME -N $FIRSTNAME -S $LASTNAME"
+
+
+ssh root@jax "smbldap-usermod -G '+Group1 Users' $USERNAME"
+ssh root@jax "smbldap-usermod -G '+Group2 Users' $USERNAME"
+ssh root@jax "smbldap-usermod -G '+Group3 Users' $USERNAME"
+
+
+
+#for debug
+#echo "USERNAME" $USERNAME "EMAIL" $EMAIL "PASSWORD" $PASSWORD "FIRSTNAME" $FIRSTNAME "LASTNAME" $LASTNAME

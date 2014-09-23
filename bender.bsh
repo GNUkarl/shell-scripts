@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+#Karl Chavarria
+#11-03-2011
+#This script is executed on a remote ssh server as a sort of 'keep alive' (in cases where 
+#you have login access to an ssh server, but no ability to edit the sshd_config)
+#The first line has the RATE variable which can be changed to any value. By default it is 
+#set to run/update every 10 seconds
+#
+RATE=10
+
+bender() {
+echo -e "`hostname` | ext: `wget -q -O - checkip.dyndns.org|sed -e 's/.*Current IP Address: //' -e 's/<.*$//' `"
+echo -e "                                                                   ()"
+echo -e '                                                                   jl'
+echo -e '                                                                   ||'
+echo -e '                                                                   LJ'
+echo -e '                                                             _,--"""""""---.'
+echo -e "                                                           ,'               \`."
+echo -e '                                                          /                   \'
+echo -e '                                                         |                     |'
+echo -e '                                                         ;                     |'
+echo -e '                                                         |                     |'
+echo -e '                                                         |                     |'
+echo -e '   _______________________________________           ____L_____________        |'
+echo -e '  /                                       \         /,---------------. "".     |'
+echo -e " | Time is : `date`  |       ||   /     \/      |   \`    |"
+echo -e '  \_______________________________        /        ||  J      J       |   |    |'
+echo -e '                                  `.     |         ||  J #    J #     |   |    |'
+echo -e "                                    \`\   |          \\__\`.___,_\`.____,'    |    |"
+echo -e '                                      `\ \.          ""-.---------....___/     |'
+echo -e '                                        `\|             |_T--+---+--.,._       |'
+echo -e '                                          `               |--|----\---\-`.     |'
+echo -e '                                                          |__|____|___|_ |     |'
+echo -e '                                                         _|__|____|___|__/     |'
+echo -e '                                                        |                      |'
+echo -e '                                                        `----------------------"'
+echo -e '       "Bite my shiny metal ass"                                      		'
+}
+
+start() {
+clear
+while :
+ do
+	bender;
+	sleep $RATE
+	clear
+ done
+}
+
+start;

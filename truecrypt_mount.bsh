@@ -1,0 +1,14 @@
+#!/bin/bash
+#
+#Karl Chavarria
+#11-14-2011
+#This is a simple little script to mount my truecrypt partition and verify that it mounted successfully.
+#
+
+/usr/bin/truecrypt ~/work\ stuff/partition.truecrypt ~/work\ stuff/secret/;
+
+if [ "$?" = "0" ]; then
+	echo -e "\nTruecrypt volume mounted successfully.\n\n"
+else
+	echo -e "\nProblem mounting Truecrypt volume!\n\n"
+fi

@@ -1,0 +1,121 @@
+#!/bin/bash
+#################################################################################################################################
+# Karl Chavarria
+# 05-31-2012
+# Shell script that mirrors an IMAP account, extracts all found attachment files and then converts and prints them.
+#
+# Requires unoconv 0.5-1 or newer (http://dag.wieers.com/home-made/unoconv),and the munpack, offlineimap, and sendemail packages
+# available through Ubuntu's default repositories.
+#
+#################################################################################################################################
+PRINTER=PRITNER_NAME  				# Add the installed printer name as displayed by the lpstat -v command
+PRINTDIR=/PATH/TO/PRINT_DIR			# Directory where harvested attachments will be placed until printing
+MAILDIR=/PATH/TO/MAIL_DIR			# Directory where the offlineimap .rc file specifies mail will be downloaded
+unoconv=/PATH/TO/UNOCONV_DIR			# $unoconv variable points to the newer unoconv binary that isn't available through apt-get yet
+
+mail_process()
+{ # Processes mail, extracts attachments and moves them to proper folder
+for file in $(ls $MAILDIR); do
+cd $MAILDIR
+munpack -f $file
+rm -rf $file
+done
+
+mv $MAILDIR/* $PRINTDIR
+rm -rf $MAILDIR/*
+cd $PRINTDIR
+run_through;
+}
+
+mail_get()
+{ # Checks for mail via IMAP, if no mail does nothing, if mail starts processing
+offlineimap
+
+NEW_MAIL=$(ls $MAILDIR|wc -l)
+
+if [ "$NEW_MAIL" != 0 ]; then
+	mail_process;
+else
+	echo -e "\n\nNo new Mail\n\n"
+fi
+}
+
+convert_file()
+{ # Uses Libreoffice unoconv to convert any non txt or pdf file into a pdf for easy printing
+CONV_RUNNING=$(netstat -an| grep 2002 -c)		# If the unoconv/openoffice listener is not running, spawn it and then proceed
+
+if [ "$CONV_RUNNING" == 0 ]; then
+	$unoconv --listener&
+	$unoconv -o $PRINTDIR/print_me.pdf -f pdf "$*"
+	rm -rf "$*"
+else
+	$unoconv -o $PRINTDIR/print_me.pdf -f pdf "$*"
+	rm -rf "$*"
+fi
+
+}
+
+fail_notify()
+{ # Sends notification email to me if something fails
+EMAIL_ADDRESS=notification_address@site.com
+SMTP_FROM=error@print.site.com
+SMTP_SERVER=smtp.site.com
+SMTP_USER=smtp.site.com_username
+SMTP_PASS=smtp.site.com_pass
+
+echo -e "$* failed printing at `date` " >/tmp/error.txt
+sendemail -f $SMTP_FROM -t $EMAIL_ADDRESS -u Error printing $* -s $SMTP_SERVER -xu $SMTP_USER -xp $SMTP_PASS -m < /tmp/error.txt
+rm -rf /tmp/error.txt
+}
+
+
+delete_file()
+{ # Deletes any files that are bad/unknown and sends notification
+
+fail_notify "$*"
+
+rm -rf "$*"
+}
+
+print_file()
+{ # Prints file specifying the input slot required by my printer
+lpr -o InputSlot=1stTray -P $PRINTER -r "$*"
+}
+
+run_through()
+{ # Ties the previous functions together
+
+for file in $(ls $PRINTDIR) ; do  # Loop cycles through any files in $PRINTDIR
+
+FILE_TXT=$(echo $file | grep -ic "\.txt$")
+FILE_PDF=$(echo $file | grep -ic "\.pdf$")
+FILE_DOC=$(echo $file | grep -ic "\.doc$")
+FILE_JPG=$(echo $file | grep -ic "\.jpg$")
+FILE_PNG=$(echo $file | grep -ic "\.png$")
+FILE_GIF=$(echo $file | grep -ic "\.gif$")
+
+
+	if [[ "$FILE_TXT" -lt 1 && "$FILE_PDF" -lt 1 && "$FILE_JPG" -lt 1 && "$FILE_JPG" -lt 1 && "$FILE_PNG" -lt 1 ]]; then  #if file isnt text and isnt pdf or gif, jpg, or png then next if
+
+		if [ "$FILE_DOC" -lt 1 ]; then		       # If file isn't a doc file then delete
+			delete_file $file
+		else
+			convert_file $file		       # If file is a doc file, convert it & print
+			echo -e "\n\n PRINTING $file !! \n\n"
+			print_file $PRINTDIR/print_me.pdf      # Once everything's converted to pdf, print all the pdfs
+		fi
+
+	else
+		echo -e "\n\n PRINTING $file !! \n\n"
+		print_file $file			       # If file *is* text, pdf, jpg, png, or gif, then print it automatically
+	fi
+
+done
+
+}
+
+main()
+{ # Main function that ties everything together
+mail_get;
+}
+main;

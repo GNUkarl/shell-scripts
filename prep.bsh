@@ -1,0 +1,181 @@
+#!/bin/bash
+#
+#Karl Chavarria
+#07-28-2011
+#Shell script to prepare Centos 6 servers for use with opensource puppet, ossec and spacewalk
+#
+##Variables
+BASEARCH=$(uname -i)
+basearch=$(uname -i)
+VER=$(cat /etc/centos-release | cut -d' ' -f4 | cut -d. -f1)
+ver=$(cat /etc/centos-release | cut -d' ' -f4 | cut -d. -f1)
+
+
+##Declare hostname
+
+hostname_setup ()
+{ #Updates the Centos network and network-config files with desired hostname
+echo -e "\nWhat name would you like to set for the machine hostname?\n\n";
+read CHANGE_NAME;
+
+hostname_verify_loop ()
+{ #Checks that an actual hostname is input
+if [ -n "$CHANGE_NAME" ]; then
+        echo -e "\nMachine hostname will be set to:" $CHANGE_NAME "\n";
+else
+        echo -e "\nPlease input a hostname!\n\n"
+        echo -e "\nWhat name would you like to set for the machine hostname?\n\n";
+        read CHANGE_NAME;
+        if [ -n "$CHANGE_NAME" ]; then
+                echo -e "\nMachine hostname will be set to:" $CHANGE_NAME "\n";
+        else
+                hostname_verify_loop
+        fi
+fi
+}
+hostname_verify_loop
+
+#for /etc/sysconfig/network file
+cat /etc/sysconfig/network | grep -Ev HOSTNAME > /tmp/tmp_network;
+echo HOSTNAME=$CHANGE_NAME >> /tmp/tmp_network;
+cat /tmp/tmp_network > /etc/sysconfig/network;
+
+#for /etc/syscofig/network-scripts/ifcfg-eth0 file
+cat /etc/sysconfig/network-scripts/ifcfg-eth0 |grep -Ev 'DHCP_HOSTNAME|BOOTPROTO|ONBOOT' > /tmp/tmp_ifcfg;
+echo -e 'DHCP_HOSTNAME='$CHANGE_NAME'\nBOOTPROTO=dhcp\nONBOOT=yes' >> /tmp/tmp_ifcfg;
+cat /tmp/tmp_ifcfg > /etc/sysconfig/network-scripts/ifcfg-eth0;
+
+#clean up tempfiles
+rm -rf /tmp/tmp_network;
+rm -rf /tmp/tmp_ifcfg;
+}
+
+
+##Insert Iptables Configuration
+
+iptables_update ()
+{ #Injects proper configuration into iptables config file
+service iptables stop;
+
+echo -e "# Firewall configuration written by system-config-firewall\n# Manual customization of this file is not recommended.\n*filter" > /etc/sysconfig/iptables;
+echo -e ":INPUT ACCEPT [0:0]\n:FORWARD ACCEPT [0:0]\n:OUTPUT ACCEPT [0:0]\n:RH-Firewall-1-INPUT - [0:0]" >> /etc/sysconfig/iptables;
+echo -e "-A INPUT -j RH-Firewall-1-INPUT\n-A FORWARD -j RH-Firewall-1-INPUT\n-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT" >> /etc/sysconfig/iptables;
+echo -e "-A INPUT -p icmp -j ACCEPT\n-A INPUT -i lo -j ACCEPT\n-A INPUT -m state --state NEW -m tcp -p tcp --dport 22 -j ACCEPT" >> /etc/sysconfig/iptables;
+echo -e "-A FORWARD -j REJECT --reject-with icmp-host-prohibited\nCOMMIT" >> /etc/sysconfig/iptables;
+
+chkconfig iptables on;
+service iptables restart;
+}
+
+
+##Install and configure Puppet
+
+puppet_install ()
+{ #Installs Puppet repo, installs Puppet, updates Puppet config files
+rpm -ivh http://site/software/epel54.rpm;
+
+echo -e "[puppetlabs]\nname=Puppet Labs Packages\nbaseurl=http://yum.puppetlabs.com/base/\nenabled=0\ngpgcheck=0" > /etc/yum.repos.d/Puppet.repo;
+
+echo -e "[epel-puppet]\nname=epel puppet\nbaseurl=http://tmz.fedorapeople.org/repo/puppet/epel/5/$basearch/\nenabled=0\ngpgcheck=0" > /etc/yum.repos.d/Epel-puppet.repo; 
+
+yum -y --enablerepo puppet,epel-puppet,epel install puppet;
+
+echo -e "\nlisten=true\nreport=true\n" >> /etc/puppet/puppet.conf;
+
+echo -e "[fileserver]\nallow puppet.site.com\n[puppetmaster]\nallow puppet.site.com\n[puppetrunner]\nallow puppet.site.com\n[puppetmaster.run]" > /etc/puppet/namespaceauth.conf;
+echo -e "allow puppet.site.com\n[puppetbucket]\nallow puppet.site.com\n[puppetreports]\nallow puppet.site.com\n[pelementserver]" >> /etc/puppet/namespaceauth.conf;
+echo -e "allow puppet.site.com\n[puppetd]\nallow puppet.site.com\n" >> /etc/puppet/namespaceauth.conf;
+
+chkconfig puppet on;
+service puppet restart;
+}
+
+
+##Compile/Install OSSEC
+
+ossec_check ()
+{ #Checks if the OSSEC directory is properly copied/ready (should be copied by puppet once puppet initializes)
+if [ -e /usr/local/ossec-hids-2.5.1/ ]; then
+		DIR_SIZE=`du -ch /usr/local/ossec-hids-2.5.1/ | grep total | tr [:blank:] ' '| cut -d ' ' -f1| egrep "[0-9]{1,}" -o`;
+	if  [ $DIR_SIZE == "6" ]; then
+		ossec_compile
+	else
+		echo -e "\nOSSEC directory isn't completely copied yet, sleeping 20 seconds...\n\n";
+		sleep 20;
+		if  [ $DIR_SIZE == "6" ]; then
+                        ossec_compile
+                else
+                    	echo -e "\nOSSEC install failed\n\n";
+                fi
+
+
+	fi
+else
+	sleep 20;
+	if [ -e /usr/local/ossec-hids-2.5.1/ ]; then
+		if  [ $DIR_SIZE == "6" ]; then
+			ossec_compile
+		else
+			echo -e "\nOSSEC install failed\n\n";
+		fi
+	else
+		echo -e "\nOSSEC install failed\n\n";
+	fi
+fi
+}
+
+ossec_compile ()
+{ #Installs OSSEC
+echo -e "\n\nagent\n\nossec.site.com" > /tmp/ossec_answer.txt;
+/usr/local/ossec-hids-2.5.1/install.sh < /tmp/ossec_answer.txt;
+rm -rf /tmp/ossec_answer.txt;
+echo -e "\n\nAgent IP address is: " `ifconfig eth0 | grep 'inet addr' | cut -d ':' -f 2 | cut -d ' ' -f1` "\n";
+}
+
+ossec_install ()
+{ #Just a simple renaming of the ossec_check function for easy main function readability
+ossec_check
+}
+
+
+##Register with Spacewalk
+space_reg ()
+{ #Installs Spacewalk client and registers with the Spacewalk server
+rpm -Uvh http://spacewalk.redhat.com/yum/1.4/RHEL/$VER/$BASEARCH/spacewalk-client-repo-1.4-1.el6.noarch.rpm;
+yum -y install rhn-client-tools rhn-check rhn-setup rhnsd m2crypto yum-rhn-plugin;
+
+space_import ()
+{ #Asks what sort of host this server is and then imports it to Spacewalk
+echo -e "\nIs this server a demo/dev host, an infrastructure host, or a KVM host?\n\n";
+read server_type;
+server_type=$(echo $server_type | tr [:upper:] [:lower:])
+
+case "$server_type" in
+'demo')
+rhnreg_ks --serverUrl=http://spacewalk.site.com/XMLRPC --activationkey=1-centos-5-64bit-demos;
+;;
+'dev')
+rhnreg_ks --serverUrl=http://spacewalk.site.com/XMLRPC --activationkey=1-centos-5-64bit-dev;
+;;
+'infrastructure')
+rhnreg_ks --serverUrl=http://spacewalk.site.com/XMLRPC --activationkey=1-centos-5-64bit-infrastructure;
+;;
+*)
+echo -e "\n\nInvalid input, please choose again.";
+space_import
+;;
+esac
+}
+space_import
+}
+
+
+
+#################################################################################################################
+##Main function of the script
+hostname_setup;
+iptables_update;
+puppet_install;
+ossec_install;
+space_reg;
+error_report;

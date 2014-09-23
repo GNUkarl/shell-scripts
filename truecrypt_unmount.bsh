@@ -1,0 +1,16 @@
+#!/bin/bash
+#
+#Karl Chavarria
+#11-14-2011
+#This is a simple little script to unmount my truecrypt partition and verify that it's fully unmounted.
+#
+
+/usr/bin/truecrypt -d ~/work\ stuff/partition.truecrypt;
+mount | grep -i truecrypt >/dev/null;
+
+
+if [ "$?" = "1" ]; then
+	echo -e "\nTruecrypt volume unmounted successfully.\n\n"
+else
+	echo -e "\nProblem unmounting Truecrypt volume!\n\n"
+fi

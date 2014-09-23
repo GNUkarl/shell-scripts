@@ -1,0 +1,99 @@
+#!/bin/bash
+#
+#Karl Chavarria
+#11-03-2011
+#This script works in interactive made and against a list of names. It takes a name, makes sure it's correctly
+#formatted, and then spits it out in a csv format that is readable by google apps. The reason for creating this
+#is to skip the many-clicks needed to create a single user in google apps email account creation, any more than
+#2-3 users and things start to get tedious. This script spits out a csv file (if run non-interactively) which
+#can be imported directly into google apps
+#
+
+arg_no=`echo $#`
+arg_h=`echo $* | grep -i "\-h"`
+ARG_COUNT=`echo $* |tr ' ' \\\n | wc -l`
+ARG_STRUCT=`echo $* | grep -ic "\-l * "`
+WORKING_DIR=`echo $PWD`
+INPUT_FILE=`echo $2`
+#################################################################################################################
+#if there's ANY argument, then look for -h and present usage statement, or  if no -h validate input,
+#or if no argument go interactive
+arg_check() {
+
+if [ "$arg_no" != "0" ]; then
+        if [ "$arg_h" != "" ]; then
+                usage;
+        else
+		validate;
+        fi
+else
+        interactive;
+fi
+
+}
+#################################################################################################################
+#echo usage statement
+usage() {
+
+echo -e "\n\nUsage: ./csv.bsh -l filename.txt	(to load list of names)\n\nOR\n\n./csv.bsh	(no arguments, for interactive mode)\n\n";
+
+}
+#################################################################################################################
+#test for the right amount of arguments and proper structure of argument(s)
+validate() {
+
+if [ "$ARG_COUNT" = "2" ]; then
+	if [ "$ARG_STRUCT" = "1" ]; then
+		process;
+	else
+		echo -e "\n\n For help use the -h option\n\n";
+	fi
+else
+	echo -e "\n\n For help use the -h option\n\n";
+fi
+
+}
+#################################################################################################################
+process() {
+NUM_LINES=`cat $WORKING_DIR/$INPUT_FILE | sed '/^\s*$/d' | wc -l`
+
+echo -e '\nprocessing...\n\n'
+
+for((i=1; i <= $NUM_LINES; i++)) ; do
+
+FULLNAME=`cat $WORKING_DIR/$INPUT_FILE | awk 'NF' | awk 'NR=='$i | awk '{print $1, $NF}' | sed 's/-/placeholder/' | tr -d [:punct:] | sed 's/placeholder/-/'`
+FIRSTNAME=`echo $FULLNAME | cut -f1 -d' ' | sed -e 's/^\(.\)/\U\1/'`
+LASTNAME=`echo $FULLNAME | cut -f2 -d' ' | sed -e 's/^\(.\)/\U\1/'`
+USERNAME=`echo $FIRSTNAME|cut -c1-1;echo $LASTNAME`
+USERNAME=`echo $USERNAME| sed -e 's/ //' -e 's/\(.*\)/\L\1/'`
+EMAIL=`echo $USERNAME"@site.com"`
+PASSWORD=`pwgen -cny -N 1 | tr , \*| tr \; \@`
+
+echo -e "$EMAIL"', '"$FIRSTNAME"', '"$LASTNAME"', '"$PASSWORD" >> $WORKING_DIR/user_list.csv
+
+done
+
+echo -e "\n\n         Output to: $WORKING_DIR/user_list.csv \n"
+
+}
+#################################################################################################################
+interactive() {
+
+echo -e "Enter full name:\n\n"
+read FULLNAME;
+
+FULLNAME=` echo $FULLNAME | awk '{print $1, $NF}' | sed 's/-/placeholder/' | tr -d [:punct:] | sed 's/placeholder/-/'`
+FIRSTNAME=`echo $FULLNAME | cut -f1 -d' ' | sed -e 's/^\(.\)/\U\1/'`
+LASTNAME=`echo $FULLNAME | cut -f2 -d' ' | sed -e 's/^\(.\)/\U\1/'`
+USERNAME=`echo $FIRSTNAME|cut -c1-1;echo $LASTNAME`
+USERNAME=`echo $USERNAME| sed -e 's/ //' -e 's/\(.*\)/\L\1/'`
+EMAIL=`echo $USERNAME"@site.com"`
+PASSWORD=`pwgen -cny -N 1 | tr , \*| tr \; \@a`
+
+echo -e "$EMAIL"', '"$FIRSTNAME"', '"$LASTNAME"', '"$PASSWORD"
+
+}
+#################################################################################################################
+
+arg_check;
+

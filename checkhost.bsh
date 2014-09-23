@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+#Karl Chavarria
+#1-12-10
+#checkhost.bsh
+#
+#PURPOSE: This script checks for a certain host being up, if the host responds the script sends an AOL instant messenger notification to the 
+#specified account using centerim and then kills the centerim process.
+#
+#NOTE: I originally wanted to run centerim in the background (centerim &) however for some reason it doesnt fully initialize/login unless it's a 
+#foreground process.  If anybody knows of any *other* aim clients that accept CLI parameters like centerim, please let me know! (robotmarx(@t)gmail(d0t)com)
+#
+#VARIABLES:
+#
+#
+default="192.168.0.1"               #specify default host to ping if one isn't specified as a parameter
+interval="60"                         #amount of time (in seconds) to wait between ping attempts)
+ping_amt="2"                          #amount of pings to send
+aim_account="aimname"                #aim account to message (Please don't use my name :p)
+cim="/usr/local/bin/centerim"         #path to centerim executable
+#
+#
+
+if [ "$*" == "" ]; then               #if no parameters specified then default to $default ip
+	pinghost=$default;
+	echo $pinghost;
+else
+	pinghost=$*;                  #if a parameter is specified, set $pinghost to the parameter
+	echo $pinghost;
+fi
+
+pingable=$(ping -c $ping_amt $pinghost | grep -i unreachable| wc -l)     # $pingable output is 0 or 1-x 
+									 # (pending on the success rate of two ping attempts), 0 = host is up
+
+while [ 1 ]     #generic loop
+	do	
+	if [ "$pingable" != "0" ]; then                                  #if host is down sleep for 1 minute and loop again
+		echo -e "Host $pinghost is down.";
+		sleep $interval;
+	else
+		echo -e "Host $pinghost is up!";                         #if host is up 
+			echo "sending"
+			for i in 1 2 3 4 5
+				do 
+   			sleep 1
+			echo "."
+				done		
+		clear
+		echo -e "Host is up at: $pinghost!" | $cim -s msg -p aim -t $aim_account
+		sleep 10;kill `ps -e | grep -i centerim| cut -d" "  -f 1`
+		break
+
+	fi
+
+done
+
