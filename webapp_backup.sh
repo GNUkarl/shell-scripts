@@ -2,38 +2,19 @@
 #
 # Karl Chavarria
 # 09-12-2012
-# Web app backup script for databases and directories
+# A somewhat universal web app backup script for databases and directories
 #
 #
-######Testing#########################################
 
-WEBAPP='Testrail' # SVN, JIRA, etc.
+WEBAPP='Webapp_Name' # SVN, JIRA, etc.
 
-APP_DIRS='/opt/testrail/ /var/www/html/' # Include the FULL path
+APP_DIRS='/path/to/dir/1 /path/to/dir/2' # Include the FULL path
 
-DATABASE='testrail:elemental:mysql:testrail' #db_type can be postgres or mysql
+DATABASE='db_user:db_pass:db_type:db_name db_user:db_pass:db_type:db_name' #db_type can be postgres or mysql
 
 BACKUP_DIR=/var/backup
-DIR_FILENAME=$WEBAPP-DIR-$DATE.tgz
-DB_FILENAME=$WEBAPP-DB-$DATE.tgz
-
-RSYNC_DIR=root@testrail-vm:/home/elemental/test_backup_dir/
-
-######Testing#########################################
-#
-#
-#
-########## Webapp Details ##################################################################################
-
-#WEBAPP='Webapp_Name' # SVN, JIRA, etc.
-
-#APP_DIRS='/path/to/dir/1 /path/to/dir/2' # Include the FULL path
-
-#DATABASE='db_user:db_pass:db_type:db_name db_user:db_pass:db_type:db_name' #db_type can be postgres or mysql
-
-#BACKUP_DIR=/var/backup
-#DIR_FILENAME=$WEBAPP_DIR_$DATE.tgz
-#DB_FILENAME=$WEBAPP_DB_$DATE.tgz
+DIR_FILENAME=$WEBAPP_DIR_$DATE.tgz
+DB_FILENAME=$WEBAPP_DB_$DATE.tgz
 
 ########## Webapp Details ##################################################################################
 #
@@ -55,7 +36,7 @@ DISK_SPACE_LIMIT=2 # Script will quit if there's less than X GB of disk space le
 
 UBUNTU_OS=`cat /etc/*release* | grep -ic ubuntu`
 
-########## MISC Variables ##################################################################################
+############################################################################################################
 #
 #
 #
@@ -188,10 +169,10 @@ clean;
 safetytest;
 webapp_backup;
 database_backup;
-#rsyncfiles;
-#clean;
+rsyncfiles;
+clean;
 
-#echo -e "$WEBAPP $DIR_FILENAME $DB_FILENAME ::::::  $WEBAPP-DIR-$DATE.tgz"
+echo -e "$WEBAPP $DIR_FILENAME $DB_FILENAME ::::::  $WEBAPP-DIR-$DATE.tgz"
 
 
 }

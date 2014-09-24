@@ -2,8 +2,8 @@
 #
 #Karl G Chavarria
 #02-08-2011
-#Blah
-#blah blah
+#
+#Earlier (and obsolete) per-app backup script written before I made the universal web app backup script
 #
 BACKUP_RETENTION=5 #days
 DATE=`date '+%m-%d-%Y'`
